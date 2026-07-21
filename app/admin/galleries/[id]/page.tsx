@@ -32,6 +32,8 @@ async function readJsonSafely(response: Response) {
       uploaded?: unknown[];
       status?: string;
       coverPhotoId?: number;
+      deleted?: number;
+      ok?: boolean;
     };
   } catch {
     return null;
@@ -80,6 +82,7 @@ export default function GalleryAdminPage() {
   const [progressText, setProgressText] = useState("");
   const [changingStatus, setChangingStatus] = useState(false);
   const [changingCoverId, setChangingCoverId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadGallery = useCallback(async () => {
     const response = await fetch(`/api/admin/galleries/${params.id}`, { cache: "no-store" });
@@ -134,6 +137,52 @@ export default function GalleryAdminPage() {
     }
     setGallery((current) => current ? { ...current, cover_photo_id: photoId } : current);
     setMessage("表紙写真を変更しました");
+  }
+
+  async function deletePhoto(photoId: number, filename: string) {
+    if (!window.confirm(`${filename}を削除しますか？\nこの操作は元に戻せません。`)) return;
+
+    setDeleting(true);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/admin/galleries/${params.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photoId }),
+      });
+      const data = await readJsonSafely(response);
+      if (!response.ok) {
+        setMessage(data?.error ?? "写真の削除に失敗しました");
+        return;
+      }
+      setMessage("写真を削除しました");
+      await loadGallery();
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function deleteAllPhotos() {
+    if (!window.confirm("この案件の写真をすべて削除しますか？\nこの操作は元に戻せません。")) return;
+
+    setDeleting(true);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/admin/galleries/${params.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deleteAll: true }),
+      });
+      const data = await readJsonSafely(response);
+      if (!response.ok) {
+        setMessage(data?.error ?? "写真の一括削除に失敗しました");
+        return;
+      }
+      setMessage(`${data?.deleted ?? 0}枚の写真を削除しました`);
+      await loadGallery();
+    } finally {
+      setDeleting(false);
+    }
   }
 
   async function uploadPhotos(event: FormEvent<HTMLFormElement>) {
@@ -234,7 +283,14 @@ export default function GalleryAdminPage() {
 
         <article className="admin-card admin-list-card">
           <p className="eyebrow">PHOTOS</p>
-          <h2>登録済み写真</h2>
+          <div className="admin-publish-actions">
+            <h2>登録済み写真</h2>
+            {photos.length > 0 && (
+              <button className="secondary-button" disabled={deleting} onClick={() => void deleteAllPhotos()}>
+                {deleting ? "削除中..." : "すべて削除"}
+              </button>
+            )}
+          </div>
           <p>公開ページの先頭に表示したい写真を表紙に設定できます。</p>
           {photos.length === 0 ? <p className="admin-empty">まだ写真がありません。</p> : (
             <div className="admin-list">
@@ -246,13 +302,22 @@ export default function GalleryAdminPage() {
                       <strong>{String(index + 1).padStart(2, "0")}　{photo.original_filename}</strong>
                       <span>{(photo.file_size / 1024 / 1024).toFixed(2)} MB</span>
                     </div>
-                    <button
-                      className={isCover ? "secondary-button" : "primary-button"}
-                      disabled={isCover || changingCoverId !== null}
-                      onClick={() => void changeCover(photo.id)}
-                    >
-                      {isCover ? "現在の表紙" : changingCoverId === photo.id ? "変更中..." : "表紙にする"}
-                    </button>
+                    <div className="admin-publish-actions">
+                      <button
+                        className={isCover ? "secondary-button" : "primary-button"}
+                        disabled={isCover || changingCoverId !== null || deleting}
+                        onClick={() => void changeCover(photo.id)}
+                      >
+                        {isCover ? "現在の表紙" : changingCoverId === photo.id ? "変更中..." : "表紙にする"}
+                      </button>
+                      <button
+                        className="secondary-button"
+                        disabled={deleting}
+                        onClick={() => void deletePhoto(photo.id, photo.original_filename)}
+                      >
+                        削除
+                      </button>
+                    </div>
                   </div>
                 );
               })}
