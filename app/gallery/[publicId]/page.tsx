@@ -144,7 +144,15 @@ export default function PublicGalleryPage() {
       <section className="download section-narrow">
         <p className="eyebrow">DOWNLOAD</p>
         <h2>大切な写真を保存する</h2>
-        <p>写真を開き、保存ボタンから1枚ずつダウンロードできます。</p>
+        <p>写真は1枚ずつ保存することも、ZIPファイルでまとめて保存することもできます。</p>
+        {photos.length > 0 && (
+          <div className="download-actions">
+            <a className="primary-button" href={`/api/gallery/${params.publicId}/download`}>
+              すべての写真を保存
+            </a>
+          </div>
+        )}
+        <p>写真枚数や通信環境によって、ダウンロード開始まで時間がかかる場合があります。</p>
       </section>
 
       <section className="thanks section-narrow">
