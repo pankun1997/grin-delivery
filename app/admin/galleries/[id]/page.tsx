@@ -13,6 +13,7 @@ type Gallery = {
   status: string;
   expires_at: string;
   cover_photo_id: number | null;
+  thank_you_message: string | null;
 };
 
 type Photo = {
@@ -32,6 +33,7 @@ async function readJsonSafely(response: Response) {
       uploaded?: unknown[];
       status?: string;
       coverPhotoId?: number;
+      thankYouMessage?: string;
       deleted?: number;
       ok?: boolean;
     };
@@ -57,11 +59,10 @@ async function uploadFileWithRetry(galleryId: string, file: File, maxAttempts = 
         body,
       });
       const data = await readJsonSafely(response);
-
       if (response.ok) return;
 
       lastError = data?.error ?? `エラー ${response.status}`;
-      const retryable = response.status === 429 || response.status === 502 || response.status === 503 || response.status === 504;
+      const retryable = [429, 502, 503, 504].includes(response.status);
       if (!retryable || attempt === maxAttempts) throw new Error(lastError);
     } catch (error) {
       lastError = error instanceof Error ? error.message : "通信エラー";
@@ -83,6 +84,7 @@ export default function GalleryAdminPage() {
   const [changingStatus, setChangingStatus] = useState(false);
   const [changingCoverId, setChangingCoverId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [savingMessage, setSavingMessage] = useState(false);
 
   const loadGallery = useCallback(async () => {
     const response = await fetch(`/api/admin/galleries/${params.id}`, { cache: "no-store" });
@@ -113,12 +115,29 @@ export default function GalleryAdminPage() {
     });
     const data = await readJsonSafely(response);
     setChangingStatus(false);
-    if (!response.ok) {
-      setMessage(data?.error ?? "公開状態の変更に失敗しました");
-      return;
-    }
+    if (!response.ok) return setMessage(data?.error ?? "公開状態の変更に失敗しました");
     setGallery((current) => current ? { ...current, status } : current);
     setMessage(status === "published" ? "ギャラリーを公開しました" : "ギャラリーを非公開にしました");
+  }
+
+  async function saveCustomerMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const thankYouMessage = String(form.get("thankYouMessage") ?? "");
+    setSavingMessage(true);
+    setMessage("");
+
+    const response = await fetch(`/api/admin/galleries/${params.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ thankYouMessage }),
+    });
+    const data = await readJsonSafely(response);
+    setSavingMessage(false);
+    if (!response.ok) return setMessage(data?.error ?? "メッセージの保存に失敗しました");
+
+    setGallery((current) => current ? { ...current, thank_you_message: data?.thankYouMessage || null } : current);
+    setMessage("お客様へのメッセージを保存しました");
   }
 
   async function changeCover(photoId: number) {
@@ -131,17 +150,13 @@ export default function GalleryAdminPage() {
     });
     const data = await readJsonSafely(response);
     setChangingCoverId(null);
-    if (!response.ok) {
-      setMessage(data?.error ?? "表紙写真の変更に失敗しました");
-      return;
-    }
+    if (!response.ok) return setMessage(data?.error ?? "表紙写真の変更に失敗しました");
     setGallery((current) => current ? { ...current, cover_photo_id: photoId } : current);
     setMessage("表紙写真を変更しました");
   }
 
   async function deletePhoto(photoId: number, filename: string) {
     if (!window.confirm(`${filename}を削除しますか？\nこの操作は元に戻せません。`)) return;
-
     setDeleting(true);
     setMessage("");
     try {
@@ -151,10 +166,7 @@ export default function GalleryAdminPage() {
         body: JSON.stringify({ photoId }),
       });
       const data = await readJsonSafely(response);
-      if (!response.ok) {
-        setMessage(data?.error ?? "写真の削除に失敗しました");
-        return;
-      }
+      if (!response.ok) return setMessage(data?.error ?? "写真の削除に失敗しました");
       setMessage("写真を削除しました");
       await loadGallery();
     } finally {
@@ -164,7 +176,6 @@ export default function GalleryAdminPage() {
 
   async function deleteAllPhotos() {
     if (!window.confirm("この案件の写真をすべて削除しますか？\nこの操作は元に戻せません。")) return;
-
     setDeleting(true);
     setMessage("");
     try {
@@ -174,10 +185,7 @@ export default function GalleryAdminPage() {
         body: JSON.stringify({ deleteAll: true }),
       });
       const data = await readJsonSafely(response);
-      if (!response.ok) {
-        setMessage(data?.error ?? "写真の一括削除に失敗しました");
-        return;
-      }
+      if (!response.ok) return setMessage(data?.error ?? "写真の一括削除に失敗しました");
       setMessage(`${data?.deleted ?? 0}枚の写真を削除しました`);
       await loadGallery();
     } finally {
@@ -190,7 +198,6 @@ export default function GalleryAdminPage() {
     const form = event.currentTarget;
     const input = form.elements.namedItem("files") as HTMLInputElement | null;
     const files = Array.from(input?.files ?? []);
-
     if (files.length === 0) return setMessage("写真を選択してください");
     if (files.length > 100) return setMessage("一度に選択できるのは100枚までです");
 
@@ -205,15 +212,12 @@ export default function GalleryAdminPage() {
 
     for (const [index, file] of files.entries()) {
       setProgressText(`${index + 1} / ${files.length}枚　${file.name}`);
-
       try {
         await uploadFileWithRetry(params.id, file);
         completed += 1;
       } catch (error) {
-        const detail = error instanceof Error ? error.message : "通信エラー";
-        failed.push(`${file.name}: ${detail}`);
+        failed.push(`${file.name}: ${error instanceof Error ? error.message : "通信エラー"}`);
       }
-
       setProgress(Math.round(((index + 1) / files.length) * 100));
       await wait(200);
     }
@@ -228,7 +232,6 @@ export default function GalleryAdminPage() {
   }
 
   if (!gallery) return <main className="admin-shell"><p>{message || "読み込み中..."}</p></main>;
-
   const publicPath = `/gallery/${gallery.public_id}`;
 
   return (
@@ -247,23 +250,36 @@ export default function GalleryAdminPage() {
       </header>
 
       <section className="admin-publish-bar">
-        <div>
-          <strong>お客様向け公開ページ</strong>
-          <span>{publicPath}</span>
-        </div>
+        <div><strong>お客様向け公開ページ</strong><span>{publicPath}</span></div>
         <div className="admin-publish-actions">
           {gallery.status === "published" && <a className="secondary-button" href={publicPath} target="_blank" rel="noreferrer">公開ページを確認</a>}
-          <button
-            className="primary-button"
-            disabled={changingStatus}
-            onClick={() => void changeStatus(gallery.status === "published" ? "paused" : "published")}
-          >
+          <button className="primary-button" disabled={changingStatus} onClick={() => void changeStatus(gallery.status === "published" ? "paused" : "published")}>
             {changingStatus ? "変更中..." : gallery.status === "published" ? "非公開にする" : "公開する"}
           </button>
         </div>
       </section>
 
       <section className="admin-grid">
+        <article className="admin-card">
+          <p className="eyebrow">MESSAGE</p>
+          <h2>お客様へのメッセージ</h2>
+          <p>公開ページの「撮影させていただき、ありがとうございました。」の下に表示されます。</p>
+          <form className="admin-form" onSubmit={saveCustomerMessage}>
+            <label>
+              メッセージ
+              <textarea
+                name="thankYouMessage"
+                defaultValue={gallery.thank_you_message ?? ""}
+                maxLength={1000}
+                rows={6}
+                placeholder="本日は撮影をご依頼いただき、ありがとうございました。\nまたお会いできる日を楽しみにしております。"
+                style={{ width: "100%", resize: "vertical", minHeight: 150, padding: 14, border: "1px solid var(--line)", borderRadius: 10, font: "inherit", lineHeight: 1.8 }}
+              />
+            </label>
+            <button className="primary-button" type="submit" disabled={savingMessage}>{savingMessage ? "保存中..." : "メッセージを保存"}</button>
+          </form>
+        </article>
+
         <article className="admin-card">
           <p className="eyebrow">UPLOAD</p>
           <h2>写真を追加</h2>
@@ -272,12 +288,7 @@ export default function GalleryAdminPage() {
             <label>写真を選択<input type="file" name="files" accept="image/*" multiple required /></label>
             <button className="primary-button" type="submit" disabled={uploading}>{uploading ? "アップロード中..." : "写真をアップロード"}</button>
           </form>
-          {uploading && (
-            <div className="upload-progress">
-              <div className="upload-progress-track"><span style={{ width: `${progress}%` }} /></div>
-              <p>{progress}%　{progressText}</p>
-            </div>
-          )}
+          {uploading && <div className="upload-progress"><div className="upload-progress-track"><span style={{ width: `${progress}%` }} /></div><p>{progress}%　{progressText}</p></div>}
           {message && <p className="admin-message">{message}</p>}
         </article>
 
@@ -285,11 +296,7 @@ export default function GalleryAdminPage() {
           <p className="eyebrow">PHOTOS</p>
           <div className="admin-publish-actions">
             <h2>登録済み写真</h2>
-            {photos.length > 0 && (
-              <button className="secondary-button" disabled={deleting} onClick={() => void deleteAllPhotos()}>
-                {deleting ? "削除中..." : "すべて削除"}
-              </button>
-            )}
+            {photos.length > 0 && <button className="secondary-button" disabled={deleting} onClick={() => void deleteAllPhotos()}>{deleting ? "削除中..." : "すべて削除"}</button>}
           </div>
           <p>写真を確認しながら、表紙設定や削除ができます。</p>
           {photos.length === 0 ? <p className="admin-empty">まだ写真がありません。</p> : (
@@ -297,49 +304,17 @@ export default function GalleryAdminPage() {
               {photos.map((photo, index) => {
                 const isCover = gallery.cover_photo_id === photo.id || (gallery.cover_photo_id === null && index === 0);
                 return (
-                  <div
-                    className="admin-list-item"
-                    key={photo.id}
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "88px minmax(0, 1fr) auto",
-                      alignItems: "center",
-                      gap: 16,
-                    }}
-                  >
-                    <img
-                      src={`/api/admin/galleries/${params.id}/photos/${photo.id}`}
-                      alt={photo.original_filename}
-                      loading="lazy"
-                      style={{
-                        width: 88,
-                        height: 66,
-                        objectFit: "cover",
-                        borderRadius: 8,
-                        background: "#e8e5dc",
-                      }}
-                    />
+                  <div className="admin-list-item" key={photo.id} style={{ display: "grid", gridTemplateColumns: "88px minmax(0, 1fr) auto", alignItems: "center", gap: 16 }}>
+                    <img src={`/api/admin/galleries/${params.id}/photos/${photo.id}`} alt={photo.original_filename} loading="lazy" style={{ width: 88, height: 66, objectFit: "cover", borderRadius: 8, background: "#e8e5dc" }} />
                     <div style={{ minWidth: 0 }}>
-                      <strong style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {String(index + 1).padStart(2, "0")}　{photo.original_filename}
-                      </strong>
+                      <strong style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{String(index + 1).padStart(2, "0")}　{photo.original_filename}</strong>
                       <span>{(photo.file_size / 1024 / 1024).toFixed(2)} MB</span>
                     </div>
                     <div className="admin-publish-actions" style={{ flexWrap: "nowrap", flexShrink: 0 }}>
-                      <button
-                        className={isCover ? "secondary-button" : "primary-button"}
-                        disabled={isCover || changingCoverId !== null || deleting}
-                        onClick={() => void changeCover(photo.id)}
-                      >
+                      <button className={isCover ? "secondary-button" : "primary-button"} disabled={isCover || changingCoverId !== null || deleting} onClick={() => void changeCover(photo.id)}>
                         {isCover ? "現在の表紙" : changingCoverId === photo.id ? "変更中..." : "表紙にする"}
                       </button>
-                      <button
-                        className="secondary-button"
-                        disabled={deleting}
-                        onClick={() => void deletePhoto(photo.id, photo.original_filename)}
-                      >
-                        削除
-                      </button>
+                      <button className="secondary-button" disabled={deleting} onClick={() => void deletePhoto(photo.id, photo.original_filename)}>削除</button>
                     </div>
                   </div>
                 );
