@@ -34,8 +34,12 @@ export async function GET() {
   if (!resources) return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
 
   const result = await resources.DB.prepare(
-    `SELECT id, public_id, customer_name, title, shoot_date, status, expires_at, created_at
-     FROM galleries ORDER BY created_at DESC`
+    `SELECT g.id, g.public_id, g.customer_name, g.title, g.shoot_date,
+            g.status, g.expires_at, g.created_at, COUNT(p.id) AS photo_count
+     FROM galleries g
+     LEFT JOIN photos p ON p.gallery_id = g.id
+     GROUP BY g.id
+     ORDER BY g.created_at DESC`
   ).all();
 
   return NextResponse.json({ galleries: result.results });
