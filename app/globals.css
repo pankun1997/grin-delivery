@@ -144,7 +144,7 @@ footer p { color: #71736b; font-size: .78rem; }
 .admin-form input[type="file"] { padding: 12px 14px; }
 .admin-form input:focus { border-color: var(--olive); box-shadow: 0 0 0 3px rgba(111,119,88,.12); }
 .admin-form .primary-button { justify-self: start; border: 0; }
-.admin-message { margin: 18px 0 0; color: var(--olive); font-weight: 700; }
+.admin-message { margin: 18px 0 0; color: var(--olive); font-weight: 700; overflow-wrap: anywhere; }
 .admin-empty { color: #71736b; margin-top: 28px; }
 .admin-list { display: grid; margin-top: 24px; border-top: 1px solid var(--line); }
 .admin-list-item { display: flex; justify-content: space-between; gap: 18px; padding: 20px 0; border-bottom: 1px solid var(--line); }
@@ -157,6 +157,13 @@ footer p { color: #71736b; font-size: .78rem; }
 .admin-back-link { display: inline-block; margin-bottom: 14px; color: var(--olive); text-decoration: none; font-size: .82rem; font-weight: 700; }
 .status { display: inline-flex !important; margin: 0 !important; padding: 5px 9px; border-radius: 999px; background: #e8e8e1; color: #66685f !important; font-size: .66rem !important; font-weight: 700; text-transform: uppercase; }
 .status-published { background: #dfe8d8; color: #556347 !important; }
+.upload-progress { margin-top: 24px; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: white; }
+.upload-progress-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; color: var(--olive); }
+.upload-progress-header strong { font-family: Georgia, serif; font-size: 1.35rem; }
+.upload-progress-header span { color: #71736b; font-size: .82rem; font-weight: 700; }
+.upload-progress-track { height: 9px; margin-top: 12px; overflow: hidden; border-radius: 999px; background: #e8e7df; }
+.upload-progress-track span { display: block; height: 100%; border-radius: inherit; background: var(--olive); transition: width .2s ease; }
+.upload-progress p { margin: 10px 0 0; color: #71736b; font-size: .78rem; overflow-wrap: anywhere; }
 
 @media (min-width: 760px) {
   .hero { padding-top: 70px; }
