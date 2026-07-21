@@ -90,9 +90,13 @@ export default function PublicGalleryPage() {
       <section className="gallery-cover">
         {cover && <img src={cover.imageUrl} alt="ギャラリー表紙" />}
         <div className="gallery-cover-shade" />
+        <div
+          className="brand"
+          style={{ position: "absolute", top: 28, left: 28, zIndex: 2, fontSize: 14 }}
+        >
+          GRIN
+        </div>
         <div className="gallery-cover-content">
-          <div className="brand">GRIN</div>
-          <p className="eyebrow">PHOTO GALLERY</p>
           <h1>{gallery.title}</h1>
           <p className="gallery-customer">{gallery.customer_name}</p>
           <p className="date">{formattedDate}</p>
