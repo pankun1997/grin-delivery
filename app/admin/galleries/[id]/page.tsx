@@ -12,6 +12,7 @@ type Gallery = {
   shoot_date: string;
   status: string;
   expires_at: string;
+  cover_photo_id: number | null;
 };
 
 type Photo = {
@@ -26,7 +27,12 @@ async function readJsonSafely(response: Response) {
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.includes("application/json")) return null;
   try {
-    return (await response.json()) as { error?: string; uploaded?: unknown[]; status?: string };
+    return (await response.json()) as {
+      error?: string;
+      uploaded?: unknown[];
+      status?: string;
+      coverPhotoId?: number;
+    };
   } catch {
     return null;
   }
@@ -73,6 +79,7 @@ export default function GalleryAdminPage() {
   const [progress, setProgress] = useState(0);
   const [progressText, setProgressText] = useState("");
   const [changingStatus, setChangingStatus] = useState(false);
+  const [changingCoverId, setChangingCoverId] = useState<number | null>(null);
 
   const loadGallery = useCallback(async () => {
     const response = await fetch(`/api/admin/galleries/${params.id}`, { cache: "no-store" });
@@ -109,6 +116,24 @@ export default function GalleryAdminPage() {
     }
     setGallery((current) => current ? { ...current, status } : current);
     setMessage(status === "published" ? "ギャラリーを公開しました" : "ギャラリーを非公開にしました");
+  }
+
+  async function changeCover(photoId: number) {
+    setChangingCoverId(photoId);
+    setMessage("");
+    const response = await fetch(`/api/admin/galleries/${params.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ coverPhotoId: photoId }),
+    });
+    const data = await readJsonSafely(response);
+    setChangingCoverId(null);
+    if (!response.ok) {
+      setMessage(data?.error ?? "表紙写真の変更に失敗しました");
+      return;
+    }
+    setGallery((current) => current ? { ...current, cover_photo_id: photoId } : current);
+    setMessage("表紙写真を変更しました");
   }
 
   async function uploadPhotos(event: FormEvent<HTMLFormElement>) {
@@ -210,16 +235,27 @@ export default function GalleryAdminPage() {
         <article className="admin-card admin-list-card">
           <p className="eyebrow">PHOTOS</p>
           <h2>登録済み写真</h2>
+          <p>公開ページの先頭に表示したい写真を表紙に設定できます。</p>
           {photos.length === 0 ? <p className="admin-empty">まだ写真がありません。</p> : (
             <div className="admin-list">
-              {photos.map((photo, index) => (
-                <div className="admin-list-item" key={photo.id}>
-                  <div>
-                    <strong>{String(index + 1).padStart(2, "0")}　{photo.original_filename}</strong>
-                    <span>{(photo.file_size / 1024 / 1024).toFixed(2)} MB</span>
+              {photos.map((photo, index) => {
+                const isCover = gallery.cover_photo_id === photo.id || (gallery.cover_photo_id === null && index === 0);
+                return (
+                  <div className="admin-list-item" key={photo.id}>
+                    <div>
+                      <strong>{String(index + 1).padStart(2, "0")}　{photo.original_filename}</strong>
+                      <span>{(photo.file_size / 1024 / 1024).toFixed(2)} MB</span>
+                    </div>
+                    <button
+                      className={isCover ? "secondary-button" : "primary-button"}
+                      disabled={isCover || changingCoverId !== null}
+                      onClick={() => void changeCover(photo.id)}
+                    >
+                      {isCover ? "現在の表紙" : changingCoverId === photo.id ? "変更中..." : "表紙にする"}
+                    </button>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </article>
