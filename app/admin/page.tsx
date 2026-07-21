@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 
 type Gallery = {
@@ -145,7 +146,7 @@ export default function AdminPage() {
           {galleries.length === 0 ? <p className="admin-empty">まだ案件がありません。</p> : (
             <div className="admin-list">
               {galleries.map((gallery) => (
-                <div className="admin-list-item" key={gallery.id}>
+                <Link className="admin-list-item admin-list-link" href={`/admin/galleries/${gallery.id}`} key={gallery.id}>
                   <div>
                     <strong>{gallery.customer_name}</strong>
                     <span>{gallery.title} ・ {gallery.shoot_date}</span>
@@ -154,7 +155,7 @@ export default function AdminPage() {
                     <span className={`status status-${gallery.status}`}>{gallery.status}</span>
                     <code>{gallery.public_id}</code>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}
