@@ -9,7 +9,7 @@ async function digest(value: string) {
 
 export async function POST(request: Request) {
   const { env } = getCloudflareContext();
-  const password = (env as CloudflareEnv & { ADMIN_PASSWORD?: string }).ADMIN_PASSWORD;
+  const password = (env as unknown as { ADMIN_PASSWORD?: string }).ADMIN_PASSWORD;
 
   if (!password) {
     return NextResponse.json({ error: "ADMIN_PASSWORDが未設定です" }, { status: 503 });
