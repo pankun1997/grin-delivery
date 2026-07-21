@@ -46,6 +46,40 @@ export async function GET(
   return NextResponse.json({ gallery, photos: photos.results });
 }
 
+export async function PATCH(
+  request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  const resources = await getResources();
+  if (!resources) return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+
+  const { id } = await context.params;
+  const body = (await request.json()) as { status?: string };
+  const allowed = new Set(["draft", "published", "paused"]);
+  if (!body.status || !allowed.has(body.status)) {
+    return NextResponse.json({ error: "公開状態が正しくありません" }, { status: 400 });
+  }
+
+  if (body.status === "published") {
+    const count = await resources.DB.prepare(
+      "SELECT COUNT(*) AS count FROM photos WHERE gallery_id = ?"
+    ).bind(id).first<{ count: number }>();
+    if (!count || count.count === 0) {
+      return NextResponse.json({ error: "写真を1枚以上登録してから公開してください" }, { status: 400 });
+    }
+  }
+
+  const result = await resources.DB.prepare(
+    "UPDATE galleries SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+  ).bind(body.status, id).run();
+
+  if (!result.meta.changes) {
+    return NextResponse.json({ error: "案件が見つかりません" }, { status: 404 });
+  }
+
+  return NextResponse.json({ ok: true, status: body.status });
+}
+
 export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> }
@@ -68,7 +102,7 @@ export async function POST(
   }
 
   if (files.length > 50) {
-    return NextResponse.json({ error: "一度にアップロードできるのは50枚までです" }, { status: 400 });
+    return NextResponse.json({ error: "一度に送信できるのは50枚までです" }, { status: 400 });
   }
 
   const orderRow = await resources.DB.prepare(
