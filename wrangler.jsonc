@@ -8,6 +8,12 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  "r2_buckets": [
+    {
+      "binding": "PHOTOS",
+      "bucket_name": "grin-delivery"
+    }
+  ],
   "observability": {
     "enabled": true
   }
