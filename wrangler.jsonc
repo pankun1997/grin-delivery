@@ -14,6 +14,13 @@
       "bucket_name": "grin-delivery"
     }
   ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "grin-delivery-db",
+      "database_id": "fbfee84f-5295-44e1-8e1b-5b3905eb8de2"
+    }
+  ],
   "observability": {
     "enabled": true
   }
