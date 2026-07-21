@@ -96,20 +96,13 @@ export default function PublicGalleryPage() {
           <h1>{gallery.title}</h1>
           <p className="gallery-customer">{gallery.customer_name}</p>
           <p className="date">{formattedDate}</p>
-          <a className="primary-button" href="#story">思い出を見る</a>
+          <a className="primary-button" href="#slideshow">思い出を見る</a>
         </div>
       </section>
 
-      <section id="story" className="intro section-narrow">
-        <p className="eyebrow">A LITTLE STORY</p>
-        <h2>{gallery.cover_message || "今日という日が、いつまでもやさしく残りますように。"}</h2>
-        {gallery.location && <p>{gallery.location}</p>}
-      </section>
-
       {slideshowPhotos.length > 0 && (
-        <section className="public-slideshow-section">
+        <section id="slideshow" className="public-slideshow-section">
           <div className="section-heading">
-            <p className="eyebrow">SLIDESHOW</p>
             <h2>思い出をゆっくり眺める</h2>
           </div>
           <div className="public-slideshow-card">
@@ -141,10 +134,13 @@ export default function PublicGalleryPage() {
         </div>
       </section>
 
-      <section className="download section-narrow">
+      <section
+        className="download section-narrow"
+        style={{ width: "min(100% - 40px, 960px)" }}
+      >
         <p className="eyebrow">DOWNLOAD</p>
         <h2>大切な写真を保存する</h2>
-        <p>写真は1枚ずつ保存することも、ZIPファイルでまとめて保存することもできます。</p>
+        <p style={{ maxWidth: 900 }}>写真は1枚ずつ保存することも、ZIPファイルでまとめて保存することもできます。</p>
         {photos.length > 0 && (
           <div className="download-actions">
             <a className="primary-button" href={`/api/gallery/${params.publicId}/download`}>
@@ -152,7 +148,7 @@ export default function PublicGalleryPage() {
             </a>
           </div>
         )}
-        <p>写真枚数や通信環境によって、ダウンロード開始まで時間がかかる場合があります。</p>
+        <p style={{ maxWidth: 900 }}>写真枚数や通信環境によって、ダウンロード開始まで時間がかかる場合があります。</p>
       </section>
 
       <section className="thanks section-narrow">
