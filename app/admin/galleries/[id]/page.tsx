@@ -22,12 +22,23 @@ type Photo = {
   created_at: string;
 };
 
+async function readJsonSafely(response: Response) {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) return null;
+  try {
+    return (await response.json()) as { error?: string; uploaded?: unknown[] };
+  } catch {
+    return null;
+  }
+}
+
 export default function GalleryAdminPage() {
   const params = useParams<{ id: string }>();
   const [gallery, setGallery] = useState<Gallery | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [message, setMessage] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState("");
 
   const loadGallery = useCallback(async () => {
     const response = await fetch(`/api/admin/galleries/${params.id}`, { cache: "no-store" });
@@ -58,32 +69,59 @@ export default function GalleryAdminPage() {
   async function uploadPhotos(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
-    const formData = new FormData(form);
-    const files = formData.getAll("files").filter((entry) => entry instanceof File && entry.size > 0);
+    const input = form.elements.namedItem("files") as HTMLInputElement | null;
+    const files = Array.from(input?.files ?? []);
 
     if (files.length === 0) {
       setMessage("写真を選択してください");
       return;
     }
 
-    setUploading(true);
-    setMessage("");
-
-    const response = await fetch(`/api/admin/galleries/${params.id}`, {
-      method: "POST",
-      body: formData,
-    });
-    const data = (await response.json()) as { error?: string; uploaded?: unknown[] };
-    setUploading(false);
-
-    if (!response.ok) {
-      setMessage(data.error ?? "アップロードに失敗しました");
+    if (files.length > 50) {
+      setMessage("一度に選択できるのは50枚までです");
       return;
     }
 
-    form.reset();
-    setMessage(`${data.uploaded?.length ?? files.length}枚アップロードしました`);
-    await loadGallery();
+    const oversized = files.find((file) => file.size > 25 * 1024 * 1024);
+    if (oversized) {
+      setMessage(`${oversized.name}は25MBを超えています`);
+      return;
+    }
+
+    setUploading(true);
+    setMessage("");
+    let completed = 0;
+
+    try {
+      for (const [index, file] of files.entries()) {
+        setProgress(`${index + 1} / ${files.length}枚目をアップロード中`);
+        const body = new FormData();
+        body.append("files", file);
+
+        const response = await fetch(`/api/admin/galleries/${params.id}`, {
+          method: "POST",
+          body,
+        });
+        const data = await readJsonSafely(response);
+
+        if (!response.ok) {
+          if (response.status === 413) {
+            throw new Error(`${file.name}の送信サイズが大きすぎます。25MB未満のJPEGでお試しください。`);
+          }
+          throw new Error(data?.error ?? `${file.name}のアップロードに失敗しました（${response.status}）`);
+        }
+        completed += 1;
+      }
+
+      form.reset();
+      setMessage(`${completed}枚アップロードしました`);
+      await loadGallery();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "アップロードに失敗しました");
+    } finally {
+      setUploading(false);
+      setProgress("");
+    }
   }
 
   if (!gallery) {
@@ -109,7 +147,7 @@ export default function GalleryAdminPage() {
         <article className="admin-card">
           <p className="eyebrow">UPLOAD</p>
           <h2>写真を追加</h2>
-          <p>JPEG・PNG・WebPなどの画像を、一度に50枚まで追加できます。</p>
+          <p>JPEG・PNG・WebPなどの画像を、一度に50枚まで追加できます。1枚ずつ順番に送信します。</p>
           <form className="admin-form" onSubmit={uploadPhotos}>
             <label>
               写真を選択
@@ -119,6 +157,7 @@ export default function GalleryAdminPage() {
               {uploading ? "アップロード中..." : "写真をアップロード"}
             </button>
           </form>
+          {progress && <p className="admin-message">{progress}</p>}
           {message && <p className="admin-message">{message}</p>}
         </article>
 
