@@ -2,6 +2,16 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+type Statement = {
+  bind: (...values: unknown[]) => Statement;
+  all: () => Promise<{ results: unknown[] }>;
+  run: () => Promise<unknown>;
+};
+
+type Database = {
+  prepare: (query: string) => Statement;
+};
+
 async function digest(value: string) {
   const bytes = new TextEncoder().encode(value);
   const hash = await crypto.subtle.digest("SHA-256", bytes);
@@ -10,7 +20,7 @@ async function digest(value: string) {
 
 async function getResources() {
   const { env } = getCloudflareContext();
-  const bindings = env as unknown as { DB: D1Database; ADMIN_PASSWORD?: string };
+  const bindings = env as unknown as { DB: Database; ADMIN_PASSWORD?: string };
   const password = bindings.ADMIN_PASSWORD;
   const cookieStore = await cookies();
   const session = cookieStore.get("grin_admin")?.value;
