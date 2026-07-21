@@ -102,6 +102,55 @@ export async function PATCH(
   return NextResponse.json({ ok: true, status: body.status });
 }
 
+export async function DELETE(
+  request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  const resources = await getResources();
+  if (!resources) return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+
+  const { id } = await context.params;
+  const body = (await request.json()) as { photoId?: number; deleteAll?: boolean };
+
+  if (body.deleteAll === true) {
+    const result = await resources.DB.prepare(
+      "SELECT storage_key FROM photos WHERE gallery_id = ?"
+    ).bind(id).all<{ storage_key: string }>();
+
+    await Promise.all(result.results.map((photo) => resources.PHOTOS.delete(photo.storage_key)));
+    await resources.DB.prepare("DELETE FROM photos WHERE gallery_id = ?").bind(id).run();
+    await resources.DB.prepare(
+      "UPDATE galleries SET cover_photo_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+    ).bind(id).run();
+
+    return NextResponse.json({ ok: true, deleted: result.results.length });
+  }
+
+  if (typeof body.photoId === "number") {
+    const photo = await resources.DB.prepare(
+      "SELECT id, storage_key FROM photos WHERE id = ? AND gallery_id = ?"
+    ).bind(body.photoId, id).first<{ id: number; storage_key: string }>();
+
+    if (!photo) {
+      return NextResponse.json({ error: "写真が見つかりません" }, { status: 404 });
+    }
+
+    await resources.PHOTOS.delete(photo.storage_key);
+    await resources.DB.prepare("DELETE FROM photos WHERE id = ? AND gallery_id = ?")
+      .bind(body.photoId, id).run();
+    await resources.DB.prepare(
+      `UPDATE galleries
+       SET cover_photo_id = CASE WHEN cover_photo_id = ? THEN NULL ELSE cover_photo_id END,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`
+    ).bind(body.photoId, id).run();
+
+    return NextResponse.json({ ok: true, deleted: 1 });
+  }
+
+  return NextResponse.json({ error: "削除対象が指定されていません" }, { status: 400 });
+}
+
 export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> }
