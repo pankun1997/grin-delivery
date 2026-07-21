@@ -32,7 +32,8 @@ export async function GET(
 
   const { id } = await context.params;
   const gallery = await resources.DB.prepare(
-    `SELECT id, public_id, customer_name, title, shoot_date, status, expires_at, created_at
+    `SELECT id, public_id, customer_name, title, shoot_date, status, expires_at,
+            cover_photo_id, created_at
      FROM galleries WHERE id = ?`
   ).bind(id).first();
 
@@ -54,7 +55,28 @@ export async function PATCH(
   if (!resources) return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
 
   const { id } = await context.params;
-  const body = (await request.json()) as { status?: string };
+  const body = (await request.json()) as { status?: string; coverPhotoId?: number };
+
+  if (typeof body.coverPhotoId === "number") {
+    const photo = await resources.DB.prepare(
+      "SELECT id FROM photos WHERE id = ? AND gallery_id = ?"
+    ).bind(body.coverPhotoId, id).first<{ id: number }>();
+
+    if (!photo) {
+      return NextResponse.json({ error: "この案件の写真が見つかりません" }, { status: 404 });
+    }
+
+    const result = await resources.DB.prepare(
+      "UPDATE galleries SET cover_photo_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+    ).bind(body.coverPhotoId, id).run();
+
+    if (!result.meta.changes) {
+      return NextResponse.json({ error: "案件が見つかりません" }, { status: 404 });
+    }
+
+    return NextResponse.json({ ok: true, coverPhotoId: body.coverPhotoId });
+  }
+
   const allowed = new Set(["draft", "published", "paused"]);
   if (!body.status || !allowed.has(body.status)) {
     return NextResponse.json({ error: "公開状態が正しくありません" }, { status: 400 });
