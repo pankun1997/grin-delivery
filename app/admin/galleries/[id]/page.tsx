@@ -291,18 +291,41 @@ export default function GalleryAdminPage() {
               </button>
             )}
           </div>
-          <p>公開ページの先頭に表示したい写真を表紙に設定できます。</p>
+          <p>写真を確認しながら、表紙設定や削除ができます。</p>
           {photos.length === 0 ? <p className="admin-empty">まだ写真がありません。</p> : (
             <div className="admin-list">
               {photos.map((photo, index) => {
                 const isCover = gallery.cover_photo_id === photo.id || (gallery.cover_photo_id === null && index === 0);
                 return (
-                  <div className="admin-list-item" key={photo.id}>
-                    <div>
-                      <strong>{String(index + 1).padStart(2, "0")}　{photo.original_filename}</strong>
+                  <div
+                    className="admin-list-item"
+                    key={photo.id}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "88px minmax(0, 1fr) auto",
+                      alignItems: "center",
+                      gap: 16,
+                    }}
+                  >
+                    <img
+                      src={`/api/admin/galleries/${params.id}/photos/${photo.id}`}
+                      alt={photo.original_filename}
+                      loading="lazy"
+                      style={{
+                        width: 88,
+                        height: 66,
+                        objectFit: "cover",
+                        borderRadius: 8,
+                        background: "#e8e5dc",
+                      }}
+                    />
+                    <div style={{ minWidth: 0 }}>
+                      <strong style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {String(index + 1).padStart(2, "0")}　{photo.original_filename}
+                      </strong>
                       <span>{(photo.file_size / 1024 / 1024).toFixed(2)} MB</span>
                     </div>
-                    <div className="admin-publish-actions">
+                    <div className="admin-publish-actions" style={{ flexWrap: "nowrap", flexShrink: 0 }}>
                       <button
                         className={isCover ? "secondary-button" : "primary-button"}
                         disabled={isCover || changingCoverId !== null || deleting}
