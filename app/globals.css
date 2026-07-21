@@ -201,6 +201,25 @@ footer p { color: #71736b; font-size: .78rem; }
   .photo-grid { grid-template-columns: repeat(3, 1fr); gap: 14px; }
   .gallery-photo { min-height: 340px; }
   .admin-shell { padding: 54px 32px 100px; }
+  .admin-list-card .admin-list-item {
+    grid-template-columns: 88px minmax(0, 1fr) auto !important;
+    column-gap: 18px !important;
+    row-gap: 0 !important;
+  }
+  .admin-list-card .admin-list-item > .admin-publish-actions {
+    grid-column: auto !important;
+    width: auto !important;
+    flex-wrap: nowrap !important;
+  }
+  .admin-list-card .admin-list-item > .admin-publish-actions button {
+    flex: 0 0 auto !important;
+    min-width: 128px !important;
+    padding-inline: 24px !important;
+    white-space: nowrap;
+  }
+  .admin-list-card .admin-list-item > .admin-publish-actions button:last-child {
+    min-width: 92px !important;
+  }
   .public-photo-grid { columns: 3; column-gap: 12px; }
   .public-photo-grid button { margin-bottom: 12px; }
 }
