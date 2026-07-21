@@ -11,7 +11,7 @@ export async function GET(
 
   const gallery = await bindings.DB.prepare(
     `SELECT id, public_id, customer_name, title, shoot_date, location,
-            cover_message, thank_you_message, status, expires_at
+            cover_message, thank_you_message, status, expires_at, cover_photo_id
      FROM galleries WHERE public_id = ?`
   ).bind(publicId).first<{
     id: number;
@@ -24,6 +24,7 @@ export async function GET(
     thank_you_message: string | null;
     status: string;
     expires_at: string;
+    cover_photo_id: number | null;
   }>();
 
   if (!gallery) {
