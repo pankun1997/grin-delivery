@@ -134,13 +134,12 @@ export default function PublicGalleryPage() {
         </div>
       </section>
 
-      <section
-        className="download section-narrow"
-        style={{ width: "min(100% - 40px, 960px)" }}
-      >
+      <section className="download section-narrow" style={{ width: "min(100% - 40px, 960px)" }}>
         <p className="eyebrow">DOWNLOAD</p>
         <h2>大切な写真を保存する</h2>
-        <p style={{ maxWidth: 900 }}>写真は1枚ずつ保存することも、ZIPファイルでまとめて保存することもできます。</p>
+        <p style={{ maxWidth: 900, fontSize: 14, lineHeight: 1.9, color: "#777970" }}>
+          写真は1枚ずつ保存することも、ZIPファイルでまとめて保存することもできます。
+        </p>
         {photos.length > 0 && (
           <div className="download-actions">
             <a className="primary-button" href={`/api/gallery/${params.publicId}/download`}>
@@ -148,13 +147,24 @@ export default function PublicGalleryPage() {
             </a>
           </div>
         )}
-        <p style={{ maxWidth: 900 }}>写真枚数や通信環境によって、ダウンロード開始まで時間がかかる場合があります。</p>
+        <p style={{ maxWidth: 900, fontSize: 13, lineHeight: 1.9, color: "#888a82" }}>
+          写真枚数や通信環境によって、ダウンロード開始まで時間がかかる場合があります。
+        </p>
       </section>
 
       <section className="thanks section-narrow">
-        <p className="eyebrow">THANK YOU</p>
-        <h2>{gallery.thank_you_message || "撮影させていただき、ありがとうございました。"}</h2>
-        <p>公開期限：{gallery.expires_at.replaceAll("-", ".")}</p>
+        <h2>撮影させていただき、ありがとうございました。</h2>
+        {gallery.thank_you_message && (
+          <p style={{ whiteSpace: "pre-wrap", maxWidth: 680, marginTop: 34 }}>
+            {gallery.thank_you_message}
+          </p>
+        )}
+        <div style={{ marginTop: 52 }}>
+          <span style={{ display: "block", color: "#85877e", fontSize: 12, letterSpacing: ".14em" }}>公開期限</span>
+          <span style={{ display: "block", marginTop: 8, fontFamily: "Georgia, serif", letterSpacing: ".12em" }}>
+            {gallery.expires_at.replaceAll("-", ".")}
+          </span>
+        </div>
       </section>
 
       <footer>
