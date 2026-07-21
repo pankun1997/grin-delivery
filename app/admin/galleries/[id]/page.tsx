@@ -32,6 +32,38 @@ async function readJsonSafely(response: Response) {
   }
 }
 
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function uploadFileWithRetry(galleryId: string, file: File, maxAttempts = 3) {
+  let lastError = "アップロードに失敗しました";
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const body = new FormData();
+    body.append("files", file);
+
+    try {
+      const response = await fetch(`/api/admin/galleries/${galleryId}`, {
+        method: "POST",
+        body,
+      });
+      const data = await readJsonSafely(response);
+
+      if (response.ok) return;
+
+      lastError = data?.error ?? `エラー ${response.status}`;
+      const retryable = response.status === 429 || response.status === 502 || response.status === 503 || response.status === 504;
+      if (!retryable || attempt === maxAttempts) throw new Error(lastError);
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : "通信エラー";
+      if (attempt === maxAttempts) throw new Error(lastError);
+    }
+
+    await wait(1000 * 2 ** (attempt - 1));
+  }
+}
+
 export default function GalleryAdminPage() {
   const params = useParams<{ id: string }>();
   const [gallery, setGallery] = useState<Gallery | null>(null);
@@ -99,21 +131,17 @@ export default function GalleryAdminPage() {
 
     for (const [index, file] of files.entries()) {
       setProgressText(`${index + 1} / ${files.length}枚　${file.name}`);
-      const body = new FormData();
-      body.append("files", file);
 
       try {
-        const response = await fetch(`/api/admin/galleries/${params.id}`, { method: "POST", body });
-        const data = await readJsonSafely(response);
-        if (!response.ok) {
-          failed.push(`${file.name}: ${data?.error ?? `エラー ${response.status}`}`);
-        } else {
-          completed += 1;
-        }
-      } catch {
-        failed.push(`${file.name}: 通信エラー`);
+        await uploadFileWithRetry(params.id, file);
+        completed += 1;
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : "通信エラー";
+        failed.push(`${file.name}: ${detail}`);
       }
+
       setProgress(Math.round(((index + 1) / files.length) * 100));
+      await wait(200);
     }
 
     form.reset();
@@ -165,7 +193,7 @@ export default function GalleryAdminPage() {
         <article className="admin-card">
           <p className="eyebrow">UPLOAD</p>
           <h2>写真を追加</h2>
-          <p>一度に100枚まで選択できます。写真は1枚ずつ安全に送信します。</p>
+          <p>一度に100枚まで選択できます。503などの一時エラーは自動で3回まで再試行します。</p>
           <form className="admin-form" onSubmit={uploadPhotos}>
             <label>写真を選択<input type="file" name="files" accept="image/*" multiple required /></label>
             <button className="primary-button" type="submit" disabled={uploading}>{uploading ? "アップロード中..." : "写真をアップロード"}</button>
