@@ -12,6 +12,7 @@ type Gallery = {
   cover_message: string | null;
   thank_you_message: string | null;
   expires_at: string;
+  cover_photo_id: number | null;
 };
 
 type Photo = {
@@ -81,7 +82,7 @@ export default function PublicGalleryPage() {
     return <main className="public-gallery-state"><p>ギャラリーを読み込んでいます...</p></main>;
   }
 
-  const cover = photos[0];
+  const cover = photos.find((photo) => photo.id === gallery.cover_photo_id) ?? photos[0];
   const formattedDate = gallery.shoot_date.replaceAll("-", ".");
 
   return (
