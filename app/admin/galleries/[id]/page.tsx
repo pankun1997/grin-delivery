@@ -304,17 +304,49 @@ export default function GalleryAdminPage() {
               {photos.map((photo, index) => {
                 const isCover = gallery.cover_photo_id === photo.id || (gallery.cover_photo_id === null && index === 0);
                 return (
-                  <div className="admin-list-item" key={photo.id} style={{ display: "grid", gridTemplateColumns: "88px minmax(0, 1fr) auto", alignItems: "center", gap: 16 }}>
-                    <img src={`/api/admin/galleries/${params.id}/photos/${photo.id}`} alt={photo.original_filename} loading="lazy" style={{ width: 88, height: 66, objectFit: "cover", borderRadius: 8, background: "#e8e5dc" }} />
+                  <div
+                    className="admin-list-item"
+                    key={photo.id}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "88px minmax(0, 1fr)",
+                      alignItems: "center",
+                      columnGap: 14,
+                      rowGap: 14,
+                    }}
+                  >
+                    <img
+                      src={`/api/admin/galleries/${params.id}/photos/${photo.id}`}
+                      alt={photo.original_filename}
+                      loading="lazy"
+                      style={{ width: 88, height: 66, objectFit: "cover", borderRadius: 8, background: "#e8e5dc" }}
+                    />
                     <div style={{ minWidth: 0 }}>
-                      <strong style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{String(index + 1).padStart(2, "0")}　{photo.original_filename}</strong>
+                      <strong style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {String(index + 1).padStart(2, "0")}　{photo.original_filename}
+                      </strong>
                       <span>{(photo.file_size / 1024 / 1024).toFixed(2)} MB</span>
                     </div>
-                    <div className="admin-publish-actions" style={{ flexWrap: "nowrap", flexShrink: 0 }}>
-                      <button className={isCover ? "secondary-button" : "primary-button"} disabled={isCover || changingCoverId !== null || deleting} onClick={() => void changeCover(photo.id)}>
+                    <div
+                      className="admin-publish-actions"
+                      style={{ gridColumn: "1 / -1", flexWrap: "nowrap", width: "100%" }}
+                    >
+                      <button
+                        className={isCover ? "secondary-button" : "primary-button"}
+                        style={{ flex: 1, minWidth: 0, paddingInline: 14, whiteSpace: "nowrap" }}
+                        disabled={isCover || changingCoverId !== null || deleting}
+                        onClick={() => void changeCover(photo.id)}
+                      >
                         {isCover ? "現在の表紙" : changingCoverId === photo.id ? "変更中..." : "表紙にする"}
                       </button>
-                      <button className="secondary-button" disabled={deleting} onClick={() => void deletePhoto(photo.id, photo.original_filename)}>削除</button>
+                      <button
+                        className="secondary-button"
+                        style={{ flex: 1, minWidth: 0, paddingInline: 14, whiteSpace: "nowrap" }}
+                        disabled={deleting}
+                        onClick={() => void deletePhoto(photo.id, photo.original_filename)}
+                      >
+                        削除
+                      </button>
                     </div>
                   </div>
                 );
