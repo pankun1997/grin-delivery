@@ -38,7 +38,7 @@ export default function GalleryAdminPage() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [message, setMessage] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState("");
+  const [progress, setProgress] = useState({ current: 0, total: 0, filename: "" });
 
   const loadGallery = useCallback(async () => {
     const response = await fetch(`/api/admin/galleries/${params.id}`, { cache: "no-store" });
@@ -77,8 +77,8 @@ export default function GalleryAdminPage() {
       return;
     }
 
-    if (files.length > 50) {
-      setMessage("一度に選択できるのは50枚までです");
+    if (files.length > 100) {
+      setMessage("一度に選択できるのは100枚までです");
       return;
     }
 
@@ -90,14 +90,17 @@ export default function GalleryAdminPage() {
 
     setUploading(true);
     setMessage("");
-    let completed = 0;
+    setProgress({ current: 0, total: files.length, filename: "" });
 
-    try {
-      for (const [index, file] of files.entries()) {
-        setProgress(`${index + 1} / ${files.length}枚目をアップロード中`);
-        const body = new FormData();
-        body.append("files", file);
+    let succeeded = 0;
+    const failed: string[] = [];
 
+    for (const [index, file] of files.entries()) {
+      setProgress({ current: index + 1, total: files.length, filename: file.name });
+      const body = new FormData();
+      body.append("files", file);
+
+      try {
         const response = await fetch(`/api/admin/galleries/${params.id}`, {
           method: "POST",
           body,
@@ -105,28 +108,43 @@ export default function GalleryAdminPage() {
         const data = await readJsonSafely(response);
 
         if (!response.ok) {
-          if (response.status === 413) {
-            throw new Error(`${file.name}の送信サイズが大きすぎます。25MB未満のJPEGでお試しください。`);
-          }
-          throw new Error(data?.error ?? `${file.name}のアップロードに失敗しました（${response.status}）`);
+          const reason = response.status === 413
+            ? "送信サイズが大きすぎます"
+            : data?.error ?? `エラー ${response.status}`;
+          failed.push(`${file.name}：${reason}`);
+          continue;
         }
-        completed += 1;
-      }
 
+        succeeded += 1;
+      } catch {
+        failed.push(`${file.name}：通信に失敗しました`);
+      }
+    }
+
+    setUploading(false);
+    setProgress({ current: 0, total: 0, filename: "" });
+
+    if (succeeded > 0) {
       form.reset();
-      setMessage(`${completed}枚アップロードしました`);
       await loadGallery();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "アップロードに失敗しました");
-    } finally {
-      setUploading(false);
-      setProgress("");
+    }
+
+    if (failed.length === 0) {
+      setMessage(`${succeeded}枚アップロードしました`);
+    } else {
+      const preview = failed.slice(0, 3).join(" / ");
+      const remaining = failed.length > 3 ? ` ほか${failed.length - 3}枚` : "";
+      setMessage(`${succeeded}枚成功・${failed.length}枚失敗。${preview}${remaining}`);
     }
   }
 
   if (!gallery) {
     return <main className="admin-shell"><p>{message || "読み込み中..."}</p></main>;
   }
+
+  const progressPercent = progress.total > 0
+    ? Math.round((progress.current / progress.total) * 100)
+    : 0;
 
   return (
     <main className="admin-shell">
@@ -147,17 +165,30 @@ export default function GalleryAdminPage() {
         <article className="admin-card">
           <p className="eyebrow">UPLOAD</p>
           <h2>写真を追加</h2>
-          <p>JPEG・PNG・WebPなどの画像を、一度に50枚まで追加できます。1枚ずつ順番に送信します。</p>
+          <p>JPEG・PNG・WebPなどの画像を、一度に100枚まで選択できます。写真は1枚ずつ安全に送信します。</p>
           <form className="admin-form" onSubmit={uploadPhotos}>
             <label>
               写真を選択
-              <input type="file" name="files" accept="image/*" multiple required />
+              <input type="file" name="files" accept="image/*" multiple required disabled={uploading} />
             </label>
             <button className="primary-button" type="submit" disabled={uploading}>
               {uploading ? "アップロード中..." : "写真をアップロード"}
             </button>
           </form>
-          {progress && <p className="admin-message">{progress}</p>}
+
+          {uploading && (
+            <div className="upload-progress" aria-live="polite">
+              <div className="upload-progress-header">
+                <strong>{progressPercent}%</strong>
+                <span>{progress.current} / {progress.total}枚</span>
+              </div>
+              <div className="upload-progress-track" aria-hidden="true">
+                <span style={{ width: `${progressPercent}%` }} />
+              </div>
+              <p>{progress.filename}</p>
+            </div>
+          )}
+
           {message && <p className="admin-message">{message}</p>}
         </article>
 
