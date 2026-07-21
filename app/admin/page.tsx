@@ -11,7 +11,19 @@ type Gallery = {
   shoot_date: string;
   status: string;
   expires_at: string;
+  photo_count: number;
 };
+
+function statusLabel(status: string) {
+  if (status === "published") return "公開中";
+  if (status === "paused") return "非公開";
+  if (status === "expired") return "公開終了";
+  return "下書き";
+}
+
+function formatDate(value: string) {
+  return value.replaceAll("-", "/");
+}
 
 export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
@@ -148,11 +160,13 @@ export default function AdminPage() {
               {galleries.map((gallery) => (
                 <Link className="admin-list-item admin-list-link" href={`/admin/galleries/${gallery.id}`} key={gallery.id}>
                   <div>
-                    <strong>{gallery.customer_name}</strong>
-                    <span>{gallery.title} ・ {gallery.shoot_date}</span>
+                    <strong>👤 {gallery.customer_name}</strong>
+                    <span>📸 {gallery.photo_count}枚</span>
+                    <span>📅 {formatDate(gallery.shoot_date)}</span>
+                    <span>{gallery.title}</span>
                   </div>
                   <div className="admin-item-meta">
-                    <span className={`status status-${gallery.status}`}>{gallery.status}</span>
+                    <span className={`status status-${gallery.status}`}>🌐 {statusLabel(gallery.status)}</span>
                     <code>{gallery.public_id}</code>
                   </div>
                 </Link>
