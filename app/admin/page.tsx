@@ -39,46 +39,59 @@ export default function AdminPage() {
 
   async function login(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setMessage("");
-    const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/admin/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: form.get("password") }),
-    });
-    const data = (await response.json()) as { error?: string };
-    if (!response.ok) {
-      setMessage(data.error ?? "ログインできませんでした");
-      return;
+    const form = new FormData(formElement);
+
+    try {
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: form.get("password") }),
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        setMessage(data.error ?? "ログインできませんでした");
+        return;
+      }
+      formElement.reset();
+      await loadGalleries();
+    } catch {
+      setMessage("通信に失敗しました。もう一度お試しください。");
     }
-    event.currentTarget.reset();
-    await loadGalleries();
   }
 
   async function createGallery(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setSaving(true);
     setMessage("");
-    const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/admin/galleries", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        customerName: form.get("customerName"),
-        title: form.get("title"),
-        shootDate: form.get("shootDate"),
-        expiresAt: form.get("expiresAt"),
-      }),
-    });
-    const data = (await response.json()) as { error?: string };
-    setSaving(false);
-    if (!response.ok) {
-      setMessage(data.error ?? "作成に失敗しました");
-      return;
+    const form = new FormData(formElement);
+
+    try {
+      const response = await fetch("/api/admin/galleries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerName: form.get("customerName"),
+          title: form.get("title"),
+          shootDate: form.get("shootDate"),
+          expiresAt: form.get("expiresAt"),
+        }),
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        setMessage(data.error ?? "作成に失敗しました");
+        return;
+      }
+      formElement.reset();
+      setMessage("案件を作成しました");
+      await loadGalleries();
+    } catch {
+      setMessage("通信に失敗しました。もう一度お試しください。");
+    } finally {
+      setSaving(false);
     }
-    event.currentTarget.reset();
-    setMessage("案件を作成しました");
-    await loadGalleries();
   }
 
   if (authenticated === null) {
