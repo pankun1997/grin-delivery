@@ -144,6 +144,9 @@ export default function PublicGalleryPage() {
         <p style={{ maxWidth: 900, fontSize: 14, lineHeight: 1.9, color: "#777970" }}>
           写真は1枚ずつ保存することも、ZIPファイルでまとめて保存することもできます。
         </p>
+        <p style={{ maxWidth: 760, fontSize: 12, lineHeight: 1.9, color: "#8b8d85" }}>
+          iPhoneでは、写真を開いて「この写真を保存」を押したあと、共有画面から「画像を保存」を選ぶと写真アプリに保存できます。ZIPファイルは「ファイル」アプリに保存されます。
+        </p>
         {photos.length > 0 && (
           <div className="download-actions">
             <a className="primary-button" href={`/api/gallery/${params.publicId}/download`}>
