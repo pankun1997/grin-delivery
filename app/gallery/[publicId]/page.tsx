@@ -32,6 +32,7 @@ export default function PublicGalleryPage() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [error, setError] = useState("");
   const [current, setCurrent] = useState(0);
+  const [slideTimerKey, setSlideTimerKey] = useState(0);
   const [lightbox, setLightbox] = useState<number | null>(null);
 
   const loadGallery = useCallback(async () => {
@@ -64,15 +65,20 @@ export default function PublicGalleryPage() {
     if (slideshowPhotos.length < 2) return;
     const timer = window.setInterval(() => {
       setCurrent((value) => (value + 1) % slideshowPhotos.length);
-    }, 4500);
+    }, 8000);
     return () => window.clearInterval(timer);
-  }, [slideshowPhotos.length]);
+  }, [slideshowPhotos.length, slideTimerKey]);
+
+  const changeSlide = (next: number) => {
+    setCurrent(next);
+    setSlideTimerKey((value) => value + 1);
+  };
 
   if (error) {
     return (
       <main className="public-gallery-state">
         <div className="brand">GRIN</div>
-        <h1>Gallery</h1>
+        <h1>ギャラリー</h1>
         <p>{error}</p>
       </main>
     );
@@ -110,14 +116,33 @@ export default function PublicGalleryPage() {
             <h2>思い出をゆっくり眺める</h2>
           </div>
           <div className="public-slideshow-card">
-            <img
-              src={slideshowPhotos[current]?.imageUrl}
-              alt={slideshowPhotos[current]?.original_filename ?? "スライド写真"}
-            />
+            <div style={{ position: "relative", overflow: "hidden", aspectRatio: "3 / 2", background: "#e8e5dc" }}>
+              {slideshowPhotos.map((photo, index) => {
+                const active = index === current;
+                return (
+                  <img
+                    key={photo.id}
+                    src={photo.imageUrl}
+                    alt={active ? photo.original_filename : ""}
+                    aria-hidden={!active}
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      opacity: active ? 1 : 0,
+                      transform: active ? "scale(1.035)" : "scale(1)",
+                      transition: "opacity 1.1s ease, transform 8s ease-out",
+                    }}
+                  />
+                );
+              })}
+            </div>
             <div className="slide-controls">
-              <button onClick={() => setCurrent((current - 1 + slideshowPhotos.length) % slideshowPhotos.length)} aria-label="前の写真">←</button>
+              <button onClick={() => changeSlide((current - 1 + slideshowPhotos.length) % slideshowPhotos.length)} aria-label="前の写真">←</button>
               <span>{String(current + 1).padStart(2, "0")} / {String(slideshowPhotos.length).padStart(2, "0")}</span>
-              <button onClick={() => setCurrent((current + 1) % slideshowPhotos.length)} aria-label="次の写真">→</button>
+              <button onClick={() => changeSlide((current + 1) % slideshowPhotos.length)} aria-label="次の写真">→</button>
             </div>
           </div>
         </section>
@@ -125,9 +150,8 @@ export default function PublicGalleryPage() {
 
       <section className="public-photo-section">
         <div className="section-heading">
-          <p className="eyebrow">ALL PHOTOS</p>
           <h2>すべての写真</h2>
-          <p>{photos.length} photos</p>
+          <p>全{photos.length}枚</p>
         </div>
         <div className="public-photo-grid">
           {photos.map((photo, index) => (
@@ -139,7 +163,6 @@ export default function PublicGalleryPage() {
       </section>
 
       <section className="download section-narrow" style={{ width: "min(100% - 40px, 960px)" }}>
-        <p className="eyebrow">DOWNLOAD</p>
         <h2>大切な写真を保存する</h2>
         <p style={{ maxWidth: 900, fontSize: 14, lineHeight: 1.9, color: "#777970" }}>
           写真は1枚ずつ保存することも、ZIPファイルでまとめて保存することもできます。
