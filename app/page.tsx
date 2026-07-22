@@ -58,6 +58,7 @@ export default function Home() {
         <p className="eyebrow">DOWNLOAD</p>
         <h2>大切な写真を保存する</h2>
         <p>写真は1枚ずつ、またはまとめて保存できます。</p>
+        <p className="save-guide">iPhoneでは共有画面の「画像を保存」を選ぶと、写真アプリに保存できます。ZIPはファイルアプリに保存されます。</p>
         <div className="download-actions">
           <button className="primary-button">すべて保存する</button>
           <button className="secondary-button">保存方法を見る</button>
