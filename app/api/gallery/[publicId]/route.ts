@@ -11,7 +11,9 @@ export async function GET(
 
   const gallery = await bindings.DB.prepare(
     `SELECT id, public_id, customer_name, title, shoot_date, location,
-            cover_message, thank_you_message, status, expires_at, cover_photo_id
+            cover_message, thank_you_message, status, expires_at, cover_photo_id,
+            page_stage, shoot_time, plan_name, meeting_details, schedule_details,
+            belongings, rain_policy, payment_details
      FROM galleries WHERE public_id = ?`
   ).bind(publicId).first<{
     id: number;
@@ -25,6 +27,14 @@ export async function GET(
     status: string;
     expires_at: string;
     cover_photo_id: number | null;
+    page_stage: "scheduled" | "editing" | "delivered";
+    shoot_time: string | null;
+    plan_name: string | null;
+    meeting_details: string | null;
+    schedule_details: string | null;
+    belongings: string | null;
+    rain_policy: string | null;
+    payment_details: string | null;
   }>();
 
   if (!gallery) {
@@ -32,12 +42,14 @@ export async function GET(
   }
 
   if (gallery.status !== "published") {
-    return NextResponse.json({ error: "このギャラリーは現在公開されていません" }, { status: 403 });
+    return NextResponse.json({ error: "このページは現在公開されていません" }, { status: 403 });
   }
 
-  const expiresAt = new Date(`${gallery.expires_at}T23:59:59+09:00`);
-  if (Number.isFinite(expiresAt.getTime()) && expiresAt.getTime() < Date.now()) {
-    return NextResponse.json({ error: "このギャラリーの公開期限は終了しました" }, { status: 410 });
+  if (gallery.page_stage === "delivered") {
+    const expiresAt = new Date(`${gallery.expires_at}T23:59:59+09:00`);
+    if (Number.isFinite(expiresAt.getTime()) && expiresAt.getTime() < Date.now()) {
+      return NextResponse.json({ error: "このギャラリーの公開期限は終了しました" }, { status: 410 });
+    }
   }
 
   const result = await bindings.DB.prepare(
